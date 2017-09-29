@@ -1,11 +1,13 @@
 package org.oliot.epcis.service.capture.mongodb;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import org.json.JSONObject;
 
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
+import org.bson.BsonObjectId;
 import org.bson.BsonString;
 import org.oliot.epcis.configuration.Configuration;
 import org.oliot.epcis.converter.mongodb.AggregationEventWriteConverter;
@@ -14,9 +16,11 @@ import org.oliot.epcis.converter.mongodb.ObjectEventWriteConverter;
 import org.oliot.epcis.converter.mongodb.QuantityEventWriteConverter;
 import org.oliot.epcis.converter.mongodb.TransactionEventWriteConverter;
 import org.oliot.epcis.converter.mongodb.TransformationEventWriteConverter;
+import org.oliot.epcis.converter.mongodb.EpcisDocumentWriteConverter;
 import org.oliot.epcis.service.subscription.TriggerEngine;
 import org.oliot.model.epcis.AggregationEventType;
 import org.oliot.model.epcis.EPCISEventListExtensionType;
+import org.oliot.model.epcis.EPCISDocumentType;
 import org.oliot.model.epcis.ObjectEventType;
 import org.oliot.model.epcis.QuantityEventType;
 import org.oliot.model.epcis.TransactionEventType;
@@ -45,9 +49,29 @@ import com.mongodb.client.model.InsertManyOptions;
 
 public class MongoCaptureUtil {
 
-	public HashMap<String, Object> capture(List<BsonDocument> bsonDocumentList) {
+	public HashMap<String, Object> capture(BsonDocument bsonDocument) {	
+		List<BsonDocument> bsonDocumentList = new ArrayList<BsonDocument>();
+		
+		bsonDocumentList.add(bsonDocument);
+		
+		return capture(bsonDocumentList, "EventData");
+	}
+	
+	public HashMap<String, Object> capture(BsonDocument bsonDocument, String collectionName) {	
+		List<BsonDocument> bsonDocumentList = new ArrayList<BsonDocument>();
+		
+		bsonDocumentList.add(bsonDocument);
+		
+		return capture(bsonDocumentList, collectionName);
+	}
+	
+	public HashMap<String, Object> capture(List<BsonDocument> bsonDocumentList) {	
+		return capture(bsonDocumentList, "EventData");
+	}
+	
+	public HashMap<String, Object> capture(List<BsonDocument> bsonDocumentList, String collectionName) {
 		HashMap<String, Object> retMsg = new HashMap<String, Object>();
-		MongoCollection<BsonDocument> collection = Configuration.mongoDatabase.getCollection("EventData",
+		MongoCollection<BsonDocument> collection = Configuration.mongoDatabase.getCollection(collectionName,
 				BsonDocument.class);
 		try {
 			InsertManyOptions option = new InsertManyOptions();
@@ -60,7 +84,7 @@ public class MongoCaptureUtil {
 		retMsg.put("eventCaptured", bsonDocumentList.size());
 		return retMsg;
 	}
-
+	
 	public BsonDocument convert(Object event, String userID, String accessModifier, Integer gcpLength) {
 		BsonDocument object2Save = null;
 		String type = null;
@@ -84,6 +108,10 @@ public class MongoCaptureUtil {
 			type = "TransformationEvent";
 			TransformationEventWriteConverter wc = new TransformationEventWriteConverter();
 			object2Save = wc.convert(((EPCISEventListExtensionType) event).getTransformationEvent(), gcpLength);
+		} else if (event instanceof EPCISDocumentType) {
+			type = "EPCISDocument";
+			EpcisDocumentWriteConverter wc = new EpcisDocumentWriteConverter();
+			object2Save = wc.convert(((EPCISDocumentType) event), gcpLength);
 		}
 
 		if (object2Save == null)
@@ -99,7 +127,6 @@ public class MongoCaptureUtil {
 		}
 		return object2Save;
 	}
-
 	
 	/* added for JSONcapture */
 	public void captureJSONEvent(JSONObject event) {
@@ -181,7 +208,7 @@ public class MongoCaptureUtil {
 		filter.remove("recordTime");
 		return filter;
 	}
-
+	
 	@SuppressWarnings("unused")
 	private boolean replaceErroneousEvents(MongoCollection<BsonDocument> collection, BsonDocument filter,
 			BsonDocument object2Save) {

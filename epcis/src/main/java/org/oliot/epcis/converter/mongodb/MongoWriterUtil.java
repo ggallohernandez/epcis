@@ -32,17 +32,21 @@ import org.oliot.model.epcis.CorrectiveEventIDsType;
 import org.oliot.model.epcis.DestinationListType;
 import org.oliot.model.epcis.EPC;
 import org.oliot.model.epcis.EPCISEventExtensionType;
+import org.oliot.model.epcis.EPCISHeaderType;
 import org.oliot.model.epcis.ErrorDeclarationType;
 import org.oliot.model.epcis.ILMDExtensionType;
 import org.oliot.model.epcis.ILMDType;
 import org.oliot.model.epcis.ObjectEventExtension2Type;
 import org.oliot.model.epcis.ObjectEventExtensionType;
+import org.oliot.model.epcis.Partner;
+import org.oliot.model.epcis.PartnerIdentification;
 import org.oliot.model.epcis.QuantityElementType;
 import org.oliot.model.epcis.QuantityEventExtensionType;
 import org.oliot.model.epcis.QuantityListType;
 import org.oliot.model.epcis.ReadPointType;
 import org.oliot.model.epcis.SourceDestType;
 import org.oliot.model.epcis.SourceListType;
+import org.oliot.model.epcis.StandardBusinessDocumentHeader;
 import org.oliot.model.epcis.TransactionEventExtension2Type;
 import org.oliot.model.epcis.TransactionEventExtensionType;
 import org.oliot.model.epcis.TransformationEventExtensionType;
@@ -300,6 +304,63 @@ public class MongoWriterUtil {
 			}
 		}
 		return bizTranList;
+	}
+	
+	static BsonDocument getEPCISHeaderObject(EPCISHeaderType epcisHeader, Integer gcpLength) {
+		BsonDocument header = new BsonDocument();
+		BsonDocument sbdh = new BsonDocument();
+		
+		sbdh.put("headerVersion", new BsonString(epcisHeader.getStandardBusinessDocumentHeader().getHeaderVersion()));
+		
+		BsonArray senderList = new BsonArray(); 
+		
+		for (int i = 0; i < epcisHeader.getStandardBusinessDocumentHeader().getSender().size(); i++) {
+			BsonDocument sender = new BsonDocument();
+			BsonDocument identifier = new BsonDocument();
+			
+			Partner p = epcisHeader.getStandardBusinessDocumentHeader().getSender().get(i);
+			PartnerIdentification pi = p.getIdentifier();
+			
+			identifier.put("authority", new BsonString(pi.getAuthority()));
+			identifier.put("value", new BsonString(pi.getValue()));
+			
+			sender.put("identifier", identifier);
+			senderList.add(sender);
+		}
+		
+		sbdh.put("senderList", senderList);
+		
+		BsonArray receiverList = new BsonArray(); 
+		
+		for (int i = 0; i < epcisHeader.getStandardBusinessDocumentHeader().getReceiver().size(); i++) {
+			BsonDocument receiver = new BsonDocument();
+			BsonDocument identifier = new BsonDocument();
+			
+			Partner p = epcisHeader.getStandardBusinessDocumentHeader().getReceiver().get(i);
+			PartnerIdentification pi = p.getIdentifier();
+			
+			identifier.put("authority", new BsonString(pi.getAuthority()));
+			identifier.put("value", new BsonString(pi.getValue()));
+			
+			receiver.put("identifier", identifier);
+			receiverList.add(receiver);
+		}
+		
+		sbdh.put("receiverList", receiverList);
+		
+		BsonDocument documentIdentification = new BsonDocument();
+		
+		documentIdentification.put("standard", new BsonString(epcisHeader.getStandardBusinessDocumentHeader().getDocumentIdentification().getStandard()));
+		documentIdentification.put("typeVersion", new BsonString(epcisHeader.getStandardBusinessDocumentHeader().getDocumentIdentification().getTypeVersion()));
+		documentIdentification.put("instanceIdentifier", new BsonString(epcisHeader.getStandardBusinessDocumentHeader().getDocumentIdentification().getInstanceIdentifier()));
+		documentIdentification.put("type", new BsonString(epcisHeader.getStandardBusinessDocumentHeader().getDocumentIdentification().getType()));
+		documentIdentification.put("creationDateAndTime", new BsonDateTime(epcisHeader.getStandardBusinessDocumentHeader().getDocumentIdentification().getCreationDateAndTime().toGregorianCalendar().getTimeInMillis()));
+		
+		sbdh.put("documentIdentification", documentIdentification);
+		
+		header.put("StandardBusinessDocumentHeader", sbdh);
+		
+		return header;
 	}
 
 	static BsonDocument getAggregationEventExtensionObject(AggregationEventExtensionType oee, Integer gcpLength) {

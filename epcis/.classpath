@@ -33,5 +33,16 @@
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry kind="con" path="org.eclipse.jst.j2ee.internal.web.container/oliot-epcis"/>
+	<classpathentry kind="var" path="MONGO/driver/build/libs/mongodb-driver-3.6.0-SNAPSHOT.jar" sourcepath="/MONGO"/>
+	<classpathentry kind="lib" path="/home/lgallo/.m2/repository/org/mongodb/mongodb-driver-core/3.2.2/mongodb-driver-core-3.2.2.jar">
+		<attributes>
+			<attribute name="maven.pomderived" value="true"/>
+			<attribute name="maven.groupId" value="org.mongodb"/>
+			<attribute name="maven.artifactId" value="mongodb-driver-core"/>
+			<attribute name="maven.version" value="3.2.2"/>
+			<attribute name="maven.scope" value="compile"/>
+		</attributes>
+	</classpathentry>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>

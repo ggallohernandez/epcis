@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 import javax.xml.bind.JAXBElement;
 
 import org.bson.BsonDocument;
+import org.bson.BsonObjectId;
 import org.json.JSONObject;
 import org.oliot.epcis.service.capture.mongodb.MongoCaptureUtil;
 
@@ -69,18 +70,37 @@ public class CaptureService implements CoreCaptureService {
 		BsonDocument doc = m.convert(event, userID, accessModifier, gcpLength);
 		return doc;
 	}
+	
+	@SuppressWarnings("unused")
+	private BsonDocument addEPCISDocumentRefereceToEvent(BsonDocument bsonEvent, BsonObjectId bsonDocumentId) {
+		bsonEvent.put("document_id", bsonDocumentId);
+		
+		return bsonEvent;
+	}
 
 	private HashMap<String, Object> captureEvents(EPCISDocumentType epcisDocument, String userID, String accessModifier,
 			Integer gcpLength) {
 		try {
+			MongoCaptureUtil util = new  MongoCaptureUtil();
+			
+			BsonObjectId bsonDocumentId = new BsonObjectId();
+			
+			BsonDocument bsonDocument = util.convert(epcisDocument, userID, accessModifier, gcpLength);
+			
+			bsonDocument.put("_id", bsonDocumentId);
+			
 			List<Object> eventList = epcisDocument.getEPCISBody().getEventList()
 					.getObjectEventOrAggregationEventOrQuantityEvent();
 			List<BsonDocument> bsonDocumentList = eventList.parallelStream().parallel()
 					.map(jaxbEvent -> prepareEvent(jaxbEvent, userID, accessModifier, gcpLength))
-					.filter(doc -> doc != null).collect(Collectors.toList());
-			MongoCaptureUtil util = new MongoCaptureUtil();
-			if (bsonDocumentList != null && bsonDocumentList.size() != 0)
+					.filter(doc -> doc != null)
+					.map(doc -> addEPCISDocumentRefereceToEvent(doc, bsonDocumentId))
+					.collect(Collectors.toList());
+			
+			if (bsonDocumentList != null && bsonDocumentList.size() != 0) {
+				util.capture(bsonDocument, "DocumentData");	
 				return util.capture(bsonDocumentList);
+			}
 		} catch (NullPointerException ex) {
 			// No Event
 		}
